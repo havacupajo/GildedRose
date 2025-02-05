@@ -1,88 +1,49 @@
-﻿using System.Collections.Generic;
+﻿using GildedRoseKata.Interfaces;
+using GildedRoseKata.Models;
+using GildedRoseKata.Strategies;
+using System;
+using System.Collections.Generic;
 
 namespace GildedRoseKata;
 
 public class GildedRose
 {
-    IList<Item> Items;
+    private readonly IList<Item> _items;
+    private readonly IDictionary<string, IUpdateStrategy> _strategies;
 
-    public GildedRose(IList<Item> Items)
+    // DEV NOTE: Would have prefered to have added itemType enum to Item class, instead of "magic strings"
+    private const string AgedBrie = "Aged Brie";
+    private const string BackstagePasses = "Backstage passes to a TAFKAL80ETC concert";
+    private const string LegendaryItem = "Sulfuras, Hand of Ragnaros";
+    private const string Conjured = "Conjured Mana Cake";
+
+    public GildedRose(IList<Item> items)
     {
-        this.Items = Items;
+        _items = items;
+        _strategies = new Dictionary<string, IUpdateStrategy>
+        {
+            { AgedBrie, new AgedBrieItemStrategy() },
+            { BackstagePasses, new BackstagePassStrategy() },
+            { LegendaryItem, new SulfurasItemStrategy() },
+            { Conjured, new ConjuredItemStrategy() }
+        };
     }
 
     public void UpdateQuality()
     {
-        for (var i = 0; i < Items.Count; i++)
+        foreach (var item in _items)
         {
-            if (Items[i].Name != "Aged Brie" && Items[i].Name != "Backstage passes to a TAFKAL80ETC concert")
+            try
             {
-                if (Items[i].Quality > 0)
-                {
-                    if (Items[i].Name != "Sulfuras, Hand of Ragnaros")
-                    {
-                        Items[i].Quality = Items[i].Quality - 1;
-                    }
-                }
+                var strategy = _strategies.TryGetValue(item.Name, out var itemStrategy)
+                    ? itemStrategy
+                    : new StandardItemStrategy();
+
+                strategy.Update(item);
             }
-            else
+            catch (Exception ex)
             {
-                if (Items[i].Quality < 50)
-                {
-                    Items[i].Quality = Items[i].Quality + 1;
-
-                    if (Items[i].Name == "Backstage passes to a TAFKAL80ETC concert")
-                    {
-                        if (Items[i].SellIn < 11)
-                        {
-                            if (Items[i].Quality < 50)
-                            {
-                                Items[i].Quality = Items[i].Quality + 1;
-                            }
-                        }
-
-                        if (Items[i].SellIn < 6)
-                        {
-                            if (Items[i].Quality < 50)
-                            {
-                                Items[i].Quality = Items[i].Quality + 1;
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (Items[i].Name != "Sulfuras, Hand of Ragnaros")
-            {
-                Items[i].SellIn = Items[i].SellIn - 1;
-            }
-
-            if (Items[i].SellIn < 0)
-            {
-                if (Items[i].Name != "Aged Brie")
-                {
-                    if (Items[i].Name != "Backstage passes to a TAFKAL80ETC concert")
-                    {
-                        if (Items[i].Quality > 0)
-                        {
-                            if (Items[i].Name != "Sulfuras, Hand of Ragnaros")
-                            {
-                                Items[i].Quality = Items[i].Quality - 1;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        Items[i].Quality = Items[i].Quality - Items[i].Quality;
-                    }
-                }
-                else
-                {
-                    if (Items[i].Quality < 50)
-                    {
-                        Items[i].Quality = Items[i].Quality + 1;
-                    }
-                }
+                Console.WriteLine($"Error updating item '{item.Name}': {ex.Message}");
             }
         }
     }
